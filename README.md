@@ -1,73 +1,70 @@
-# Movie Pathways App
+# Movie Pathways
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Movie Pathways is a small React + TypeScript web app that helps you plan “full day at the theater” marathons. Enter movies (with runtimes), theaters, and showtimes, then generate feasible itineraries that chain multiple movies together.
 
-Currently, two official plugins are available:
+It accounts for:
+- **Fixed travel time** when switching theaters (0 minutes if staying in the same theater)
+- **Trailer leeway (X minutes)** so you can arrive up to `X` minutes after the posted start time and still consider the showing “catchable”
+- **Optional movie preference ranking** to push your must-sees to the top
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+If no preferences are set, the app prioritizes itineraries with the **maximum number of movies**.
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Features
 
-## Expanding the ESLint configuration
+- Add/edit/delete **Movies** (title, runtime, optional rank)
+- Add/edit/delete **Theaters**
+- Add/edit/delete **Showtimes** (movie + theater + datetime)
+- Configure:
+  - **Trailer leeway (X minutes)**
+  - **Fixed travel time (T minutes)**
+  - **Max results** (how many itineraries to return)
+  - **Beam width** (advanced: search thoroughness vs. speed)
+- Generates and ranks itineraries by:
+  1. **Preference score** (if any movies are ranked)
+  2. **Movie count**
+  3. **Earliest finish time**
+- Persists data in **LocalStorage** (so you don’t lose your entries on refresh)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+---
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## How it works (scheduling rules)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Each showtime has:
+- `start` (posted start time)
+- `end = start + runtime`
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+A transition from showtime **A → B** is valid if:
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- Travel time is **0** when staying in the same theater, otherwise **T**
+- You can arrive up to `X` minutes after `B.start`
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+So A → B is allowed when:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+`A.end + travelTime(A, B) <= B.start + X`
+
+This models “I can show up a bit late because trailers exist.”
+
+**Note:** In the current MVP, arriving late does *not* push the movie end time later. End time is still computed from the posted start time. (This matches the model of catching a movie after it begins.)
+
+---
+
+## Tech stack
+
+- React
+- TypeScript
+- Vite
+
+---
+
+## Getting started
+
+### Prerequisites
+- Node.js (recommended: current LTS)
+
+### Install & run
+
+```bash
+npm install
+npm run dev
