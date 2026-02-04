@@ -162,6 +162,13 @@ export default function App() {
           </div>
         </div>
 
+        <TheatersCard
+          theaters={state.theaters}
+          onAdd={addTheater}
+          onUpdate={updateTheater}
+          onDelete={deleteTheater}
+        />
+
         <MoviesCard
           movies={state.movies}
           onAdd={addMovie}
@@ -169,12 +176,6 @@ export default function App() {
           onDelete={deleteMovie}
         />
 
-        <TheatersCard
-          theaters={state.theaters}
-          onAdd={addTheater}
-          onUpdate={updateTheater}
-          onDelete={deleteTheater}
-        />
       </div>
 
       <div className="row" style={{ marginTop: 12 }}>
@@ -272,7 +273,7 @@ function MoviesCard(props: {
       <div className="row">
         <div className="col" style={{ flex: 1 }}>
           <label>Title</label>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., The Brutalist" />
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Howl's Moving Castle" />
         </div>
         <div className="col" style={{ width: 140 }}>
           <label>Runtime (mins)</label>
@@ -371,7 +372,7 @@ function TheatersCard(props: {
       <div className="row">
         <div className="col" style={{ flex: 1 }}>
           <label>Name</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., AMC Essex Green" />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., AMC Lincoln Square 13" />
         </div>
         <button
           onClick={() => {
