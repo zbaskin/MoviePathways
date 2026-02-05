@@ -1,4 +1,4 @@
-import type { AppState, Id, Itinerary, Movie, ScheduledShow, Showtime } from "./types";
+import type { AppState, Id, Itinerary, Movie, ScheduledShow, } from "./types"; // Showtime
 
 export function uid(prefix = "id"): Id {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
