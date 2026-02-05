@@ -116,6 +116,7 @@ export function generateItineraries(state: AppState): Itinerary[] {
   // Beam search over partial itineraries.
   type Partial = {
     lastIdx: number;
+    usedMovieIds: Set<string>;    // NEW: prevent watching same movie twice
     usedShowtimeIds: Set<string>; // prevent duplicates if same showtime somehow appears twice
     shows: ScheduledShow[];
     preferenceScore: number;
@@ -127,6 +128,7 @@ export function generateItineraries(state: AppState): Itinerary[] {
     const score = m ? moviePreferencePoints(m) : 0;
     return {
       lastIdx: idx,
+      usedMovieIds: new Set([s.movieId]),
       usedShowtimeIds: new Set([s.showtimeId]),
       shows: [s],
       preferenceScore: score,
@@ -174,12 +176,16 @@ export function generateItineraries(state: AppState): Itinerary[] {
         const nextShow = shows[j];
         if (p.usedShowtimeIds.has(nextShow.showtimeId)) continue;
 
+        // NEW: don't watch the same movie twice
+        if (p.usedMovieIds.has(nextShow.movieId)) continue;
+
         const m = movieById.get(nextShow.movieId);
         const addScore = m ? moviePreferencePoints(m) : 0;
         const addTravel = costs[k];
 
         expanded.push({
           lastIdx: j,
+          usedMovieIds: new Set([...p.usedMovieIds, nextShow.movieId]),
           usedShowtimeIds: new Set([...p.usedShowtimeIds, nextShow.showtimeId]),
           shows: [...p.shows, nextShow],
           preferenceScore: p.preferenceScore + addScore,
