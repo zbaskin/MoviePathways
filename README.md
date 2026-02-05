@@ -1,6 +1,6 @@
-# Movie Pathways
+# Vouchr Pathways
 
-Movie Pathways is a small React + TypeScript web app that helps you plan “full day at the theater” marathons. Enter movies (with runtimes), theaters, and showtimes, then generate feasible itineraries that chain multiple movies together.
+Vouchr's Movie Pathways is a small React + TypeScript web app that helps you plan “full day at the theater” marathons. Enter movies (with runtimes), theaters, and showtimes, then generate feasible itineraries that chain multiple movies together.
 
 It accounts for:
 - **Fixed travel time** when switching theaters (0 minutes if staying in the same theater)
