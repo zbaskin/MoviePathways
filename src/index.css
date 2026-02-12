@@ -102,3 +102,55 @@ details[open] > summary {
 .cardBodyScroll table {
   width: 100%;
 }
+
+.headerBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Overlay */
+.overlayBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 1000;
+}
+
+.settingsPanel {
+  position: fixed;
+  top: 72px;
+  right: 20px;
+  width: min(260px, calc(100vw - 40px));
+  max-height: calc(100vh - 100px);
+  overflow: auto;
+  z-index: 1001;
+
+  background: white;
+  border: 1px solid #e6e6e6;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.18);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.panelTitle {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+}

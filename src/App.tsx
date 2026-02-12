@@ -29,6 +29,15 @@ function saveState(state: AppState) {
 
 export default function App() {
   const [state, setState] = useState<AppState>(() => loadState());
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setSettingsOpen(false);
+    }
+    if (settingsOpen) window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [settingsOpen]);
 
   useEffect(() => saveState(state), [state]);
 
@@ -103,36 +112,62 @@ export default function App() {
 
   return (
     <div className="container">
-      <h1>Movie Pathways</h1>
+      <div className="headerBar">
+        <h1 style={{ margin: 0 }}>Movie Pathways</h1>
 
-      {/* Collapsible Settings (full width) */}
-      <div className="row">
-        <div className="card" style={{ flex: "0 1 300px", width: "20%" }}>
-          <details>
-            <summary>Settings</summary>
-            <div className="col" style={{ minWidth: 220 }}>
-              <label>Itinerary mode</label>
-              <select
-                value={state.settings.itineraryMode}
-                onChange={(e) => updateSettings({ itineraryMode: e.target.value as any })}
-              >
-                <option value="single-day">One-day</option>
-                <option value="multi-day">Multi-day</option>
-              </select>
+        <div className="headerRight">
+          <button className="secondary" onClick={() => setSettingsOpen(true)}>
+            Settings
+          </button>
+        </div>
+      </div>
+      {settingsOpen && (
+        <>
+          <div
+            className="overlayBackdrop"
+            onClick={() => setSettingsOpen(false)}
+            aria-hidden="true"
+          />
+
+          <div
+            className="settingsPanel"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Settings"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="panelHeader">
+              <div className="panelTitle">Settings</div>
+              <button className="secondary" onClick={() => setSettingsOpen(false)}>
+                Close
+              </button>
             </div>
 
-            {state.settings.itineraryMode === "single-day" && (
-              <div className="col" style={{ minWidth: 220 }}>
-                <label>Selected day</label>
-                <input
-                  type="date"
-                  value={state.settings.selectedDate}
-                  onChange={(e) => updateSettings({ selectedDate: e.target.value })}
-                />
-                <small>Showtime inputs become time-only.</small>
-              </div>
-            )}
+            {/* === Your existing settings controls go here === */}
             <div className="row">
+              <div className="col" style={{ minWidth: 220 }}>
+                <label>Itinerary mode</label>
+                <select
+                  value={state.settings.itineraryMode}
+                  onChange={(e) => updateSettings({ itineraryMode: e.target.value as any })}
+                >
+                  <option value="single-day">One-day</option>
+                  <option value="multi-day">Multi-day</option>
+                </select>
+              </div>
+
+              {state.settings.itineraryMode === "single-day" && (
+                <div className="col" style={{ minWidth: 220 }}>
+                  <label>Selected day</label>
+                  <input
+                    type="date"
+                    value={state.settings.selectedDate}
+                    onChange={(e) => updateSettings({ selectedDate: e.target.value })}
+                  />
+                  <small>Showtime inputs become time-only.</small>
+                </div>
+              )}
+
               <div className="col">
                 <label>Trailer leeway X (mins)</label>
                 <input
@@ -190,11 +225,13 @@ export default function App() {
             </div>
 
             <div style={{ marginTop: 12 }}>
-              <button className="danger" onClick={resetAll}>Reset all data</button>
+              <button className="danger" onClick={resetAll}>
+                Reset all data
+              </button>
             </div>
-          </details>
-        </div>
-      </div>
+          </div>
+        </>
+      )}
 
       {/* Movies + Theaters (full row under Settings) */}
       <div className="row" style={{ marginTop: 12 }}>
