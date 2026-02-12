@@ -110,7 +110,28 @@ export default function App() {
         <div className="card" style={{ flex: "0 1 300px", width: "20%" }}>
           <details>
             <summary>Settings</summary>
+            <div className="col" style={{ minWidth: 220 }}>
+              <label>Itinerary mode</label>
+              <select
+                value={state.settings.itineraryMode}
+                onChange={(e) => updateSettings({ itineraryMode: e.target.value as any })}
+              >
+                <option value="single-day">One-day</option>
+                <option value="multi-day">Multi-day</option>
+              </select>
+            </div>
 
+            {state.settings.itineraryMode === "single-day" && (
+              <div className="col" style={{ minWidth: 220 }}>
+                <label>Selected day</label>
+                <input
+                  type="date"
+                  value={state.settings.selectedDate}
+                  onChange={(e) => updateSettings({ selectedDate: e.target.value })}
+                />
+                <small>Showtime inputs become time-only.</small>
+              </div>
+            )}
             <div className="row">
               <div className="col">
                 <label>Trailer leeway X (mins)</label>
@@ -282,7 +303,7 @@ function MoviesCard(props: {
   const [runtime, setRuntime] = useState<number>(120);
 
   return (
-    <div className="card cardFixed cardBodyScroll" style={{ flex: 3, minWidth: 400 }}>
+    <div className="card cardFixed cardBodyScroll" style={{ flex: 3, minWidth: 320 }}>
       <h2>Movies</h2>
 
       <div className="row">
@@ -455,7 +476,7 @@ function ShowtimesCard(props: {
   }, [props.theaters, theaterId]);
 
   return (
-    <div className="card" style={{ flex: 1 }}>
+    <div className="card cardFixed cardBodyScroll" style={{ flex: 1 }}>
       <h2>Showtimes</h2>
 
       <div className="row">

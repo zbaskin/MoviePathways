@@ -96,7 +96,22 @@ export function generateItineraries(state: AppState): Itinerary[] {
 
   const movieById = new Map(state.movies.map(m => [m.id, m]));
   const shows = buildScheduledShows(state);
-  const n = shows.length;
+  const mode = state.settings.itineraryMode;
+  const selectedDate = state.settings.selectedDate;
+
+  let filteredShows = shows;
+
+  if (mode === "single-day" && selectedDate) {
+    // Keep only showtimes whose local date matches selectedDate.
+    filteredShows = shows.filter(s => {
+        const d = new Date(s.startMs);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd}` === selectedDate;
+    });
+  }
+  const n = filteredShows.length;
   if (n === 0) return [];
 
   // Precompute adjacency list (forward edges).
@@ -105,7 +120,7 @@ export function generateItineraries(state: AppState): Itinerary[] {
 
   for (let i = 0; i < n; i++) {
     for (let j = i + 1; j < n; j++) {
-      const res = canTransition(shows[i], shows[j], X, T);
+      const res = canTransition(filteredShows[i], filteredShows[j], X, T);
       if (res.ok) {
         nexts[i].push(j);
         travelCost[i].push(res.travelAppliedMins);
@@ -216,10 +231,12 @@ export function generateItineraries(state: AppState): Itinerary[] {
 export function buildDefaultState(): AppState {
   return {
     settings: {
-      trailerLeewayMins: 20,
-      travelMins: 15,
-      maxResults: 20,
-      beamWidth: 200,
+        trailerLeewayMins: 20,
+        travelMins: 15,
+        maxResults: 20,
+        beamWidth: 200,
+        itineraryMode: "single-day",
+        selectedDate: new Date().toISOString().split("T")[0],
     },
     movies: [],
     theaters: [],

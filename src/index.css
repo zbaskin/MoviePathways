@@ -87,7 +87,7 @@ details[open] > summary {
 
 /* Fixed-height cards with scrollable body */
 .cardFixed {
-  height: 520px;              /* tweak */
+  height: 300px;              /* tweak */
   display: flex;
   flex-direction: column;
 }

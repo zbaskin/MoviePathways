@@ -26,6 +26,8 @@ export type Settings = {
   travelMins: number;        // T, used only when switching theaters
   maxResults: number;        // K
   beamWidth: number;         // internal
+  itineraryMode: "single-day" | "multi-day"; // NEW
+  selectedDate: string; // NEW: "YYYY-MM-DD" used in single-day mode
 };
 
 export type AppState = {
