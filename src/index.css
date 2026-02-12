@@ -84,3 +84,21 @@ details > summary {
 details[open] > summary {
   margin-bottom: 12px;
 }
+
+/* Fixed-height cards with scrollable body */
+.cardFixed {
+  height: 520px;              /* tweak */
+  display: flex;
+  flex-direction: column;
+}
+
+.cardBodyScroll {
+  flex: 1;
+  overflow: auto;
+  padding-right: 6px;         /* prevents scrollbar from overlaying content */
+}
+
+/* Keep table headers readable */
+.cardBodyScroll table {
+  width: 100%;
+}

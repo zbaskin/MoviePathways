@@ -282,7 +282,7 @@ function MoviesCard(props: {
   const [runtime, setRuntime] = useState<number>(120);
 
   return (
-    <div className="card" style={{ flex: 1, minWidth: 320 }}>
+    <div className="card cardFixed cardBodyScroll" style={{ flex: 3, minWidth: 400 }}>
       <h2>Movies</h2>
 
       <div className="row">
@@ -381,7 +381,7 @@ function TheatersCard(props: {
   const [name, setName] = useState("");
 
   return (
-    <div className="card" style={{ flex: 1, minWidth: 280 }}>
+    <div className="card cardFixed cardBodyScroll" style={{ flex: 2, minWidth: 280 }}>
       <h2>Theaters</h2>
 
       <div className="row">
