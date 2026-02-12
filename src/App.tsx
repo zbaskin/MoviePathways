@@ -222,6 +222,8 @@ export default function App() {
           onAdd={addShowtime}
           onUpdate={updateShowtime}
           onDelete={deleteShowtime}
+          mode={state.settings.itineraryMode}
+          selectedDate={state.settings.selectedDate}
         />
       </div>
 
@@ -456,6 +458,8 @@ function TheatersCard(props: {
 }
 
 function ShowtimesCard(props: {
+  mode: "single-day" | "multi-day";
+  selectedDate: string;
   movies: Movie[];
   theaters: Theater[];
   showtimes: Showtime[];
@@ -474,6 +478,18 @@ function ShowtimesCard(props: {
   useEffect(() => {
     if (!theaterId && props.theaters[0]) setTheaterId(props.theaters[0].id);
   }, [props.theaters, theaterId]);
+
+  function timeFromStartLocal(startLocal: string): string {
+    // "YYYY-MM-DDTHH:mm" -> "HH:mm"
+    const tIndex = startLocal.indexOf("T");
+    return tIndex >= 0 ? startLocal.slice(tIndex + 1) : "";
+  }
+
+  function combineDateAndTime(date: string, time: string): string {
+    // date: "YYYY-MM-DD", time: "HH:mm"
+    if (!date || !time) return "";
+    return `${date}T${time}`;
+  }
 
   return (
     <div className="card cardFixed cardBodyScroll" style={{ flex: 1 }}>
@@ -504,19 +520,34 @@ function ShowtimesCard(props: {
 
         <div className="col" style={{ minWidth: 260 }}>
           <label>Start (local)</label>
-          <input
-            type="datetime-local"
-            value={startLocal}
-            onChange={(e) => setStartLocal(e.target.value)}
-          />
+          {props.mode === "single-day" ? (
+            <input
+              type="time"
+              value={startLocal}
+              onChange={(e) => setStartLocal(e.target.value)}
+            />
+          ) : (
+            <input
+              type="datetime-local"
+              value={startLocal}
+              onChange={(e) => setStartLocal(e.target.value)}
+            />
+          )}
         </div>
 
         <button
           onClick={() => {
             if (!movieId || !theaterId || !startLocal) return;
-            props.onAdd(movieId, theaterId, startLocal);
+
+            const normalized =
+              props.mode === "single-day"
+                ? combineDateAndTime(props.selectedDate, startLocal)
+                : startLocal;
+
+            if (!normalized) return;
+            props.onAdd(movieId, theaterId, normalized);
           }}
-          disabled={!movieId || !theaterId || !startLocal}
+          disabled={!movieId || !theaterId || !startLocal || (props.mode === "single-day" && !props.selectedDate)}
         >
           Add
         </button>
@@ -558,11 +589,24 @@ function ShowtimesCard(props: {
                       </select>
                     </td>
                     <td>
-                      <input
-                        type="datetime-local"
-                        value={st.startLocal}
-                        onChange={(e) => props.onUpdate(st.id, { startLocal: e.target.value })}
-                      />
+                      {props.mode === "single-day" ? (
+                        <input
+                          type="time"
+                          value={timeFromStartLocal(st.startLocal)}
+                          onChange={(e) => {
+                            const normalized = combineDateAndTime(props.selectedDate, e.target.value);
+                            if (!normalized) return;
+                            props.onUpdate(st.id, { startLocal: normalized });
+                          }}
+                          disabled={!props.selectedDate}
+                        />
+                      ) : (
+                        <input
+                          type="datetime-local"
+                          value={st.startLocal}
+                          onChange={(e) => props.onUpdate(st.id, { startLocal: e.target.value })}
+                        />
+                      )}
                     </td>
                     <td style={{ textAlign: "right" }}>
                       <button className="secondary" onClick={() => props.onDelete(st.id)}>Delete</button>
