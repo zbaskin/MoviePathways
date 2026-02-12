@@ -105,70 +105,78 @@ export default function App() {
     <div className="container">
       <h1>Movie Pathways</h1>
 
+      {/* Collapsible Settings (full width) */}
       <div className="row">
-        <div className="card" style={{ flex: 1, minWidth: 320 }}>
-          <h2>Settings</h2>
-          <div className="row">
-            <div className="col">
-              <label>Trailer leeway X (mins)</label>
-              <input
-                type="number"
-                min={0}
-                max={60}
-                value={state.settings.trailerLeewayMins}
-                onChange={(e) => updateSettings({ trailerLeewayMins: clampInt(Number(e.target.value), 0, 120) })}
-              />
-              <small>You can arrive up to X minutes after posted start.</small>
+        <div className="card" style={{ flex: "0 1 300px", width: "20%" }}>
+          <details>
+            <summary>Settings</summary>
+
+            <div className="row">
+              <div className="col">
+                <label>Trailer leeway X (mins)</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={60}
+                  value={state.settings.trailerLeewayMins}
+                  onChange={(e) =>
+                    updateSettings({ trailerLeewayMins: clampInt(Number(e.target.value), 0, 120) })
+                  }
+                />
+                <small>You can arrive up to X minutes after posted start.</small>
+              </div>
+
+              <div className="col">
+                <label>Travel time T (mins)</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={120}
+                  value={state.settings.travelMins}
+                  onChange={(e) =>
+                    updateSettings({ travelMins: clampInt(Number(e.target.value), 0, 240) })
+                  }
+                />
+                <small>Applies only when switching theaters.</small>
+              </div>
+
+              <div className="col">
+                <label>Max results</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={200}
+                  value={state.settings.maxResults}
+                  onChange={(e) =>
+                    updateSettings({ maxResults: clampInt(Number(e.target.value), 1, 200) })
+                  }
+                />
+              </div>
+
+              <div className="col">
+                <label>Beam width (advanced)</label>
+                <input
+                  type="number"
+                  min={50}
+                  max={2000}
+                  value={state.settings.beamWidth}
+                  onChange={(e) =>
+                    updateSettings({ beamWidth: clampInt(Number(e.target.value), 50, 5000) })
+                  }
+                />
+                <small>Bigger = more thorough, slower.</small>
+              </div>
             </div>
 
-            <div className="col">
-              <label>Travel time T (mins)</label>
-              <input
-                type="number"
-                min={0}
-                max={120}
-                value={state.settings.travelMins}
-                onChange={(e) => updateSettings({ travelMins: clampInt(Number(e.target.value), 0, 240) })}
-              />
-              <small>Applies only when switching theaters.</small>
+            <div style={{ marginTop: 12 }}>
+              <button className="danger" onClick={resetAll}>Reset all data</button>
             </div>
-
-            <div className="col">
-              <label>Max results</label>
-              <input
-                type="number"
-                min={1}
-                max={200}
-                value={state.settings.maxResults}
-                onChange={(e) => updateSettings({ maxResults: clampInt(Number(e.target.value), 1, 200) })}
-              />
-            </div>
-
-            <div className="col">
-              <label>Beam width (advanced)</label>
-              <input
-                type="number"
-                min={50}
-                max={2000}
-                value={state.settings.beamWidth}
-                onChange={(e) => updateSettings({ beamWidth: clampInt(Number(e.target.value), 50, 5000) })}
-              />
-              <small>Bigger = more thorough, slower.</small>
-            </div>
-          </div>
-
-          <div style={{ marginTop: 12 }}>
-            <button className="danger" onClick={resetAll}>Reset all data</button>
-          </div>
+          </details>
         </div>
+      </div>
 
-        <TheatersCard
-          theaters={state.theaters}
-          onAdd={addTheater}
-          onUpdate={updateTheater}
-          onDelete={deleteTheater}
-        />
-
+      {/* Movies + Theaters (full row under Settings) */}
+      <div className="row" style={{ marginTop: 12 }}>
         <MoviesCard
           movies={state.movies}
           onAdd={addMovie}
@@ -176,7 +184,14 @@ export default function App() {
           onDelete={deleteMovie}
         />
 
+        <TheatersCard
+          theaters={state.theaters}
+          onAdd={addTheater}
+          onUpdate={updateTheater}
+          onDelete={deleteTheater}
+        />
       </div>
+
 
       <div className="row" style={{ marginTop: 12 }}>
         <ShowtimesCard
