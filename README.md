@@ -1,11 +1,12 @@
 # Vouchr Pathways
 
-Vouchr's Movie Pathways is a small React + TypeScript web app that helps you plan “full day at the theater” marathons. Enter movies (with runtimes), theaters, and showtimes, then generate feasible itineraries that chain multiple movies together.
+A React + TypeScript web app that helps you plan "full day at the theater" marathons. Enter movies (with runtimes), theaters, and showtimes, then generate feasible itineraries that chain multiple movies together.
 
 It accounts for:
 - **Fixed travel time** when switching theaters (0 minutes if staying in the same theater)
-- **Trailer leeway (X minutes)** so you can arrive up to `X` minutes after the posted start time and still consider the showing “catchable”
+- **Trailer leeway (X minutes)** so you can arrive up to `X` minutes after the posted start time and still consider the showing "catchable"
 - **Optional movie preference ranking** to push your must-sees to the top
+- **One-day or multi-day mode** to plan a single date or span multiple days
 
 If no preferences are set, the app prioritizes itineraries with the **maximum number of movies**.
 
@@ -15,8 +16,10 @@ If no preferences are set, the app prioritizes itineraries with the **maximum nu
 
 - Add/edit/delete **Movies** (title, runtime, optional rank)
 - Add/edit/delete **Theaters**
-- Add/edit/delete **Showtimes** (movie + theater + datetime)
-- Configure:
+- Add/edit/delete **Showtimes** (movie + theater + start time)
+- **One-day mode** — pick a date; showtime inputs become time-only
+- **Multi-day mode** — enter full date-time for each showtime
+- Configure via Settings:
   - **Trailer leeway (X minutes)**
   - **Fixed travel time (T minutes)**
   - **Max results** (how many itineraries to return)
@@ -25,7 +28,7 @@ If no preferences are set, the app prioritizes itineraries with the **maximum nu
   1. **Preference score** (if any movies are ranked)
   2. **Movie count**
   3. **Earliest finish time**
-- Persists data in **LocalStorage** (so you don’t lose your entries on refresh)
+- Persists data in **localStorage** (no data lost on refresh)
 
 ---
 
@@ -42,29 +45,54 @@ A transition from showtime **A → B** is valid if:
 
 So A → B is allowed when:
 
-`A.end + travelTime(A, B) <= B.start + X`
+```
+A.end + travelTime(A, B) <= B.start + X
+```
 
-This models “I can show up a bit late because trailers exist.”
+This models "I can show up a bit late because trailers exist."
 
-**Note:** In the current MVP, arriving late does *not* push the movie end time later. End time is still computed from the posted start time. (This matches the model of catching a movie after it begins.)
+**Note:** Arriving late does *not* push the movie end time later — end time is always computed from the posted start time.
 
 ---
 
 ## Tech stack
 
-- React
-- TypeScript
-- Vite
+- **React** + **TypeScript**
+- **Vite** (build tool)
+- **lucide-react** (icons)
+- **Vitest** (unit tests)
 
 ---
 
 ## Getting started
 
 ### Prerequisites
-- Node.js (recommended: current LTS)
+
+- Node.js 20.19+ or 22.12+
 
 ### Install & run
 
 ```bash
 npm install
 npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+### Build
+
+```bash
+npm run build
+```
+
+---
+
+## Testing
+
+The core itinerary algorithm is covered by a Vitest test suite.
+
+```bash
+npm run test          # run all tests once
+npm run test:watch    # re-run on file changes
+npm run test:coverage # run with coverage report
+```
