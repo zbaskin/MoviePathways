@@ -106,7 +106,7 @@ export default function App() {
         <div className="navbar-brand">
           <img src="/src/assets/red-logo.png" className="navbar-logo" alt="" />
           <span className="navbar-title">
-            Movie <span className="navbar-title-accent">Pathways</span>
+            Vouchr <span className="navbar-title-accent">Pathways</span>
           </span>
         </div>
         <button className="icon-btn" onClick={() => setSettingsOpen(true)} aria-label="Open settings">
