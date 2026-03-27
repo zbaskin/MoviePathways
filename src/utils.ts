@@ -75,13 +75,6 @@ export function canTransition(
   return { ok: earliestArrivalMs <= arriveDeadlineMs, travelAppliedMins };
 }
 
-export function itineraryScore(
-  it: Itinerary
-): [number, number, number] {
-  // Higher is better for score and count; earlier finish is better (so we invert).
-  // We'll sort by: preferenceScore desc, movieCount desc, finishMs asc
-  return [it.preferenceScore, it.movieCount, -it.finishMs];
-}
 
 export function sortItineraries(its: Itinerary[]): Itinerary[] {
   return [...its].sort((a, b) => {
@@ -129,16 +122,16 @@ export function generateItineraries(state: AppState): Itinerary[] {
   }
 
   // Beam search over partial itineraries.
-  type Partial = {
+  type BeamEntry = {
     lastIdx: number;
-    usedMovieIds: Set<string>;    // NEW: prevent watching same movie twice
+    usedMovieIds: Set<string>;    // prevent watching same movie twice
     usedShowtimeIds: Set<string>; // prevent duplicates if same showtime somehow appears twice
     shows: ScheduledShow[];
     preferenceScore: number;
     totalTravelMins: number;
   };
 
-  const initial: Partial[] = shows.map((s, idx) => {
+  const initial: BeamEntry[] = filteredShows.map((s, idx) => {
     const m = movieById.get(s.movieId);
     const score = m ? moviePreferencePoints(m) : 0;
     return {
@@ -151,12 +144,12 @@ export function generateItineraries(state: AppState): Itinerary[] {
     };
   });
 
-  let beam: Partial[] = initial;
+  let beam: BeamEntry[] = initial;
 
   const finished: Itinerary[] = [];
   const seenItineraryKeys = new Set<string>();
 
-  function finalize(p: Partial) {
+  function finalize(p: BeamEntry) {
     const finishMs = p.shows[p.shows.length - 1].endMs;
     const it: Itinerary = {
       shows: p.shows,
@@ -179,7 +172,7 @@ export function generateItineraries(state: AppState): Itinerary[] {
     // Always consider current beam members as finished candidates.
     for (const p of beam) finalize(p);
 
-    const expanded: Partial[] = [];
+    const expanded: BeamEntry[] = [];
 
     for (const p of beam) {
       const i = p.lastIdx;
@@ -188,7 +181,7 @@ export function generateItineraries(state: AppState): Itinerary[] {
 
       for (let k = 0; k < candidates.length; k++) {
         const j = candidates[k];
-        const nextShow = shows[j];
+        const nextShow = filteredShows[j];
         if (p.usedShowtimeIds.has(nextShow.showtimeId)) continue;
 
         // NEW: don't watch the same movie twice

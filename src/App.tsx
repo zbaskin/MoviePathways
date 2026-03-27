@@ -305,7 +305,6 @@ export default function App() {
                             <div style={{ fontWeight: 650 }}>{title}</div>
                             <div className="muted">
                               {th} • {formatTime(s.startMs)}–{formatTime(s.endMs)}
-                              {" • "}posted {formatTime(s.startMs)}
                               {state.settings.trailerLeewayMins > 0
                                 ? ` (arrive by ${formatTime(s.startMs + state.settings.trailerLeewayMins * 60_000)})`
                                 : ""}
