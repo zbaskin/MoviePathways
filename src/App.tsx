@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Film, MapPin, Clock, Route, Plus, Trash2, Settings2, X } from "lucide-react";
+import { Film, MapPin, Clock, Route, Plus, Trash2, Settings2, X, ClipboardPaste } from "lucide-react";
 import type { AppState, Movie, Theater, Showtime } from "./types";
 import { buildDefaultState, clampInt, formatDate, formatTime, generateItineraries, uid } from "./utils";
+import { parseFandangoText, type ParsedShowtime } from "./fandangoParser";
 
 const STORAGE_KEY = "movie_pathways_state_v1";
 
@@ -86,6 +87,36 @@ export default function App() {
   function addShowtime(movieId: string, theaterId: string, startLocal: string) {
     const st: Showtime = { id: uid("sho"), movieId, theaterId, startLocal };
     setState(s => ({ ...s, showtimes: [...s.showtimes, st] }));
+  }
+
+  // Batch import: creates missing theaters + all showtimes in two state updates
+  function importShowtimes(entries: { movieId: string; theater: string; startLocal: string }[]) {
+    setState(s => {
+      const theaterMap = new Map(s.theaters.map(t => [t.name.toLowerCase(), t.id]));
+      const newTheaters: Theater[] = [];
+
+      for (const e of entries) {
+        const key = e.theater.toLowerCase();
+        if (!theaterMap.has(key)) {
+          const t: Theater = { id: uid("the"), name: e.theater };
+          newTheaters.push(t);
+          theaterMap.set(key, t.id);
+        }
+      }
+
+      const newShowtimes: Showtime[] = entries.map(e => ({
+        id: uid("sho"),
+        movieId: e.movieId,
+        theaterId: theaterMap.get(e.theater.toLowerCase())!,
+        startLocal: e.startLocal,
+      }));
+
+      return {
+        ...s,
+        theaters: [...s.theaters, ...newTheaters],
+        showtimes: [...s.showtimes, ...newShowtimes],
+      };
+    });
   }
 
   function updateShowtime(id: string, patch: Partial<Showtime>) {
@@ -233,6 +264,8 @@ export default function App() {
           onAdd={addShowtime}
           onUpdate={updateShowtime}
           onDelete={deleteShowtime}
+          onAddTheater={addTheater}
+          onImportShowtimes={importShowtimes}
           mode={state.settings.itineraryMode}
           selectedDate={state.settings.selectedDate}
         />
@@ -530,17 +563,22 @@ function ShowtimesCard(props: {
   onAdd: (movieId: string, theaterId: string, startLocal: string) => void;
   onUpdate: (id: string, patch: Partial<Showtime>) => void;
   onDelete: (id: string) => void;
+  onAddTheater: (name: string) => void;
+  onImportShowtimes: (entries: { movieId: string; theater: string; startLocal: string }[]) => void;
 }) {
   const [movieId, setMovieId] = useState<string>("");
   const [theaterId, setTheaterId] = useState<string>("");
   const [startLocal, setStartLocal] = useState<string>("");
+  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
-    if (!movieId && props.movies[0]) setMovieId(props.movies[0].id);
+    const valid = props.movies.some(m => m.id === movieId);
+    if (!valid && props.movies[0]) setMovieId(props.movies[0].id);
   }, [props.movies, movieId]);
 
   useEffect(() => {
-    if (!theaterId && props.theaters[0]) setTheaterId(props.theaters[0].id);
+    const valid = props.theaters.some(t => t.id === theaterId);
+    if (!valid && props.theaters[0]) setTheaterId(props.theaters[0].id);
   }, [props.theaters, theaterId]);
 
   function timeFromStartLocal(sl: string): string {
@@ -564,125 +602,344 @@ function ShowtimesCard(props: {
   }
 
   return (
-    <div className="card cardFixed">
-      <div className="card-header">
-        <Clock size={16} className="card-header-icon" />
-        <h2 className="card-title">Showtimes</h2>
+    <>
+      <div className="card cardFixed">
+        <div className="card-header">
+          <Clock size={16} className="card-header-icon" />
+          <h2 className="card-title">Showtimes</h2>
+          <button
+            className="icon-btn"
+            style={{ marginLeft: "auto" }}
+            onClick={() => setImportOpen(true)}
+            aria-label="Import from Fandango"
+            title="Import from Fandango"
+            disabled={props.movies.length === 0}
+          >
+            <ClipboardPaste size={15} />
+          </button>
+        </div>
+
+        <div className="add-form">
+          <div className="col" style={{ minWidth: 160, flex: 1 }}>
+            <label>Movie</label>
+            <select value={movieId} onChange={(e) => setMovieId(e.target.value)} disabled={props.movies.length === 0}>
+              {props.movies.length === 0
+                ? <option value="">Add a movie first</option>
+                : props.movies.map(m => <option key={m.id} value={m.id}>{m.title}</option>)
+              }
+            </select>
+          </div>
+
+          <div className="col" style={{ minWidth: 160, flex: 1 }}>
+            <label>Theater</label>
+            <select value={theaterId} onChange={(e) => setTheaterId(e.target.value)} disabled={props.theaters.length === 0}>
+              {props.theaters.length === 0
+                ? <option value="">Add a theater first</option>
+                : props.theaters.map(t => <option key={t.id} value={t.id}>{t.name}</option>)
+              }
+            </select>
+          </div>
+
+          <div className="col" style={{ minWidth: 160 }}>
+            <label>Start time</label>
+            {props.mode === "single-day" ? (
+              <input type="time" value={startLocal} onChange={(e) => setStartLocal(e.target.value)} />
+            ) : (
+              <input type="datetime-local" value={startLocal} onChange={(e) => setStartLocal(e.target.value)} />
+            )}
+          </div>
+
+          <button
+            onClick={handleAdd}
+            disabled={!movieId || !theaterId || !startLocal || (props.mode === "single-day" && !props.selectedDate)}
+            style={{ alignSelf: "flex-end" }}
+          >
+            <Plus size={14} />Add
+          </button>
+        </div>
+
+        <div className="cardBodyScroll">
+          {props.showtimes.length === 0 ? (
+            <div className="empty-state">
+              <Clock size={28} className="empty-state-icon" />
+              <div className="empty-state-text">No showtimes added yet</div>
+              <div className="empty-state-hint">
+                Add manually above, or click <ClipboardPaste size={12} style={{ display: "inline", verticalAlign: "middle" }} /> to import from Fandango
+              </div>
+            </div>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th style={{ width: "35%" }}>Movie</th>
+                  <th style={{ width: "35%" }}>Theater</th>
+                  <th>Start</th>
+                  <th style={{ width: 40 }} />
+                </tr>
+              </thead>
+              <tbody>
+                {props.showtimes
+                  .slice()
+                  .sort((a, b) => (a.startLocal < b.startLocal ? -1 : 1))
+                  .map(st => (
+                    <tr key={st.id}>
+                      <td>
+                        <select
+                          value={st.movieId}
+                          onChange={(e) => props.onUpdate(st.id, { movieId: e.target.value })}
+                        >
+                          {props.movies.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
+                        </select>
+                      </td>
+                      <td>
+                        <select
+                          value={st.theaterId}
+                          onChange={(e) => props.onUpdate(st.id, { theaterId: e.target.value })}
+                        >
+                          {props.theaters.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                        </select>
+                      </td>
+                      <td>
+                        {props.mode === "single-day" ? (
+                          <input
+                            type="time"
+                            value={timeFromStartLocal(st.startLocal)}
+                            onChange={(e) => {
+                              const normalized = combineDateAndTime(props.selectedDate, e.target.value);
+                              if (!normalized) return;
+                              props.onUpdate(st.id, { startLocal: normalized });
+                            }}
+                            disabled={!props.selectedDate}
+                          />
+                        ) : (
+                          <input
+                            type="datetime-local"
+                            value={st.startLocal}
+                            onChange={(e) => props.onUpdate(st.id, { startLocal: e.target.value })}
+                          />
+                        )}
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        <button
+                          className="icon-btn danger-icon"
+                          onClick={() => props.onDelete(st.id)}
+                          aria-label="Delete showtime"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
 
-      <div className="add-form">
-        <div className="col" style={{ minWidth: 160, flex: 1 }}>
-          <label>Movie</label>
-          <select value={movieId} onChange={(e) => setMovieId(e.target.value)} disabled={props.movies.length === 0}>
-            {props.movies.length === 0
-              ? <option value="">Add a movie first</option>
-              : props.movies.map(m => <option key={m.id} value={m.id}>{m.title}</option>)
-            }
-          </select>
+      {importOpen && (
+        <FandangoImportModal
+          movies={props.movies}
+          theaters={props.theaters}
+          defaultMovieId={movieId}
+          defaultDate={props.selectedDate}
+          onClose={() => setImportOpen(false)}
+          onImport={(entries) => {
+            props.onImportShowtimes(entries);
+            setImportOpen(false);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+interface ImportEntry {
+  movieId: string;
+  theater: string;
+  startLocal: string;
+}
+
+function FandangoImportModal(props: {
+  movies: Movie[];
+  theaters: Theater[];
+  defaultMovieId: string;
+  defaultDate: string;
+  onClose: () => void;
+  onImport: (entries: ImportEntry[]) => void;
+}) {
+  const [movieId, setMovieId] = useState(props.defaultMovieId || props.movies[0]?.id || "");
+  const [date, setDate] = useState(props.defaultDate || "");
+  const [rawText, setRawText] = useState("");
+  const [parsed, setParsed] = useState<ParsedShowtime[]>([]);
+  const [selected, setSelected] = useState<boolean[]>([]);
+  const [parsed_once, setParsedOnce] = useState(false);
+
+  const theaterNames = useMemo(
+    () => new Set(props.theaters.map(t => t.name.toLowerCase())),
+    [props.theaters]
+  );
+
+  function handleParse() {
+    const results = parseFandangoText(rawText, date);
+    setParsed(results);
+    setSelected(results.map(() => true));
+    setParsedOnce(true);
+  }
+
+  function handleImport() {
+    const entries: ImportEntry[] = parsed
+      .filter((_, i) => selected[i])
+      .map(p => ({ movieId, theater: p.theater, startLocal: p.startLocal }));
+    props.onImport(entries);
+  }
+
+  function formatPreviewTime(startLocal: string): string {
+    // "2025-05-15T13:15" → "1:15 PM"
+    const tIdx = startLocal.indexOf("T");
+    if (tIdx < 0) return startLocal;
+    const [hh, mm] = startLocal.slice(tIdx + 1).split(":");
+    const h = parseInt(hh, 10);
+    const period = h >= 12 ? "PM" : "AM";
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${h12}:${mm} ${period}`;
+  }
+
+  const selectedCount = selected.filter(Boolean).length;
+  const newTheaters = parsed_once
+    ? [...new Set(parsed.map(p => p.theater))].filter(name => !theaterNames.has(name.toLowerCase()))
+    : [];
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") props.onClose();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [props]);
+
+  return (
+    <>
+      <div className="overlayBackdrop" onClick={props.onClose} aria-hidden="true" />
+      <div
+        className="importModal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Import from Fandango"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="panelHeader">
+          <div className="panelTitle">Import from Fandango</div>
+          <button className="icon-btn" onClick={props.onClose} aria-label="Close">
+            <X size={16} />
+          </button>
         </div>
 
-        <div className="col" style={{ minWidth: 160, flex: 1 }}>
-          <label>Theater</label>
-          <select value={theaterId} onChange={(e) => setTheaterId(e.target.value)} disabled={props.theaters.length === 0}>
-            {props.theaters.length === 0
-              ? <option value="">Add a theater first</option>
-              : props.theaters.map(t => <option key={t.id} value={t.id}>{t.name}</option>)
-            }
-          </select>
+        <div className="import-fields">
+          <div className="col" style={{ flex: 1 }}>
+            <label>Movie (these showtimes are for)</label>
+            <select value={movieId} onChange={(e) => setMovieId(e.target.value)}>
+              {props.movies.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
+            </select>
+          </div>
+          <div className="col" style={{ minWidth: 160 }}>
+            <label>Date</label>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
         </div>
 
-        <div className="col" style={{ minWidth: 160 }}>
-          <label>Start time</label>
-          {props.mode === "single-day" ? (
-            <input type="time" value={startLocal} onChange={(e) => setStartLocal(e.target.value)} />
-          ) : (
-            <input type="datetime-local" value={startLocal} onChange={(e) => setStartLocal(e.target.value)} />
-          )}
+        <div className="col" style={{ marginTop: 12 }}>
+          <label>
+            Paste Fandango showtimes text — go to Fandango, select a movie, then copy and paste the theater listing below
+          </label>
+          <textarea
+            className="import-textarea"
+            value={rawText}
+            onChange={(e) => setRawText(e.target.value)}
+            placeholder={"AMC Headquarters 10\n1.36 mi\n\n1:15p\n3:50p\n6:30p\n..."}
+            rows={6}
+          />
         </div>
 
         <button
-          onClick={handleAdd}
-          disabled={!movieId || !theaterId || !startLocal || (props.mode === "single-day" && !props.selectedDate)}
-          style={{ alignSelf: "flex-end" }}
+          onClick={handleParse}
+          disabled={!rawText.trim() || !date || !movieId}
+          style={{ marginTop: 8 }}
         >
-          <Plus size={14} />Add
+          Parse showtimes
         </button>
-      </div>
 
-      <div className="cardBodyScroll">
-        {props.showtimes.length === 0 ? (
-          <div className="empty-state">
-            <Clock size={28} className="empty-state-icon" />
-            <div className="empty-state-text">No showtimes added yet</div>
-            <div className="empty-state-hint">Select a movie, theater, and time above</div>
+        {parsed_once && (
+          <div style={{ marginTop: 16 }}>
+            {parsed.length === 0 ? (
+              <div className="import-empty">
+                No showtimes found. Make sure you copied the full theater listing from Fandango, and that a date is selected.
+              </div>
+            ) : (
+              <>
+                {newTheaters.length > 0 && (
+                  <div className="import-warning">
+                    New theaters will be created: {newTheaters.join(", ")}
+                  </div>
+                )}
+
+                <table className="import-preview-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: 32 }}>
+                        <input
+                          type="checkbox"
+                          checked={selected.every(Boolean)}
+                          onChange={(e) => setSelected(selected.map(() => e.target.checked))}
+                          style={{ width: "auto", height: "auto" }}
+                        />
+                      </th>
+                      <th>Theater</th>
+                      <th style={{ width: 90 }}>Time</th>
+                      <th style={{ width: 70 }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {parsed.map((p, i) => {
+                      const isNew = !theaterNames.has(p.theater.toLowerCase());
+                      return (
+                        <tr key={i} style={{ opacity: selected[i] ? 1 : 0.45 }}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              checked={selected[i]}
+                              onChange={(e) => {
+                                const next = [...selected];
+                                next[i] = e.target.checked;
+                                setSelected(next);
+                              }}
+                              style={{ width: "auto", height: "auto" }}
+                            />
+                          </td>
+                          <td style={{ fontSize: 13 }}>{p.theater}</td>
+                          <td style={{ fontSize: 13 }}>{formatPreviewTime(p.startLocal)}</td>
+                          <td>
+                            {isNew
+                              ? <span className="badge badge-accent" style={{ fontSize: 11 }}>New</span>
+                              : <span className="badge badge-default" style={{ fontSize: 11 }}>Match</span>
+                            }
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                <div style={{ marginTop: 12, display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button className="secondary" onClick={props.onClose}>Cancel</button>
+                  <button onClick={handleImport} disabled={selectedCount === 0}>
+                    Add {selectedCount} showtime{selectedCount !== 1 ? "s" : ""}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th style={{ width: "35%" }}>Movie</th>
-                <th style={{ width: "35%" }}>Theater</th>
-                <th>Start</th>
-                <th style={{ width: 40 }} />
-              </tr>
-            </thead>
-            <tbody>
-              {props.showtimes
-                .slice()
-                .sort((a, b) => (a.startLocal < b.startLocal ? -1 : 1))
-                .map(st => (
-                  <tr key={st.id}>
-                    <td>
-                      <select
-                        value={st.movieId}
-                        onChange={(e) => props.onUpdate(st.id, { movieId: e.target.value })}
-                      >
-                        {props.movies.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
-                      </select>
-                    </td>
-                    <td>
-                      <select
-                        value={st.theaterId}
-                        onChange={(e) => props.onUpdate(st.id, { theaterId: e.target.value })}
-                      >
-                        {props.theaters.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                      </select>
-                    </td>
-                    <td>
-                      {props.mode === "single-day" ? (
-                        <input
-                          type="time"
-                          value={timeFromStartLocal(st.startLocal)}
-                          onChange={(e) => {
-                            const normalized = combineDateAndTime(props.selectedDate, e.target.value);
-                            if (!normalized) return;
-                            props.onUpdate(st.id, { startLocal: normalized });
-                          }}
-                          disabled={!props.selectedDate}
-                        />
-                      ) : (
-                        <input
-                          type="datetime-local"
-                          value={st.startLocal}
-                          onChange={(e) => props.onUpdate(st.id, { startLocal: e.target.value })}
-                        />
-                      )}
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      <button
-                        className="icon-btn danger-icon"
-                        onClick={() => props.onDelete(st.id)}
-                        aria-label="Delete showtime"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
         )}
       </div>
-    </div>
+    </>
   );
 }
