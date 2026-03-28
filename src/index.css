@@ -681,6 +681,76 @@ td select:focus {
 }
 
 /* ============================================================
+   OMDB Lookup Dropdown
+   ============================================================ */
+.omdb-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 200;
+  overflow: hidden;
+  animation: slideDown 0.12s ease;
+}
+
+.omdb-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 9px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-size: 13px;
+  text-align: left;
+  height: auto;
+  cursor: pointer;
+}
+
+.omdb-option:last-child { border-bottom: none; }
+
+.omdb-option:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
+}
+
+.omdb-option-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.omdb-option-year {
+  font-size: 11px;
+  color: var(--color-text-subtle);
+  flex-shrink: 0;
+}
+
+.omdb-empty {
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--color-text-subtle);
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ============================================================
    Fandango Import Modal
    ============================================================ */
 .importModal {

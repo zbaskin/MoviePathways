@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Film, MapPin, Clock, Route, Plus, Trash2, Settings2, X, ClipboardPaste } from "lucide-react";
+import { Film, MapPin, Clock, Route, Plus, Trash2, Settings2, X, ClipboardPaste, Search, Loader } from "lucide-react";
 import type { AppState, Movie, Theater, Showtime } from "./types";
 import { buildDefaultState, clampInt, formatDate, formatTime, generateItineraries, uid } from "./utils";
 import { parseFandangoText, type ParsedShowtime } from "./fandangoParser";
+import { searchOmdb, getOmdbMovie, type OmdbResult } from "./omdbClient";
+
+const OMDB_API_KEY = import.meta.env.VITE_OMDB_API_KEY as string | undefined ?? "";
 
 const STORAGE_KEY = "movie_pathways_state_v1";
 
@@ -359,11 +362,34 @@ function MoviesCard(props: {
 }) {
   const [title, setTitle] = useState("");
   const [runtime, setRuntime] = useState<number>(120);
+  const [searching, setSearching] = useState(false);
+  const [suggestions, setSuggestions] = useState<OmdbResult[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   function handleAdd() {
     if (!title.trim()) return;
     props.onAdd(title, runtime);
     setTitle("");
+    setSuggestions([]);
+    setShowSuggestions(false);
+  }
+
+  async function handleSearch() {
+    if (!title.trim() || !OMDB_API_KEY) return;
+    setSearching(true);
+    setSuggestions([]);
+    const results = await searchOmdb(title.trim(), OMDB_API_KEY);
+    setSuggestions(results.slice(0, 6));
+    setShowSuggestions(true);
+    setSearching(false);
+  }
+
+  async function handleSelectSuggestion(result: OmdbResult) {
+    setShowSuggestions(false);
+    setTitle(result.title);
+    if (!OMDB_API_KEY) return;
+    const movie = await getOmdbMovie(result.title, OMDB_API_KEY);
+    if (movie?.runtimeMins) setRuntime(movie.runtimeMins);
   }
 
   return (
@@ -374,14 +400,51 @@ function MoviesCard(props: {
       </div>
 
       <div className="add-form">
-        <div className="col" style={{ flex: 1 }}>
+        <div className="col" style={{ flex: 1, position: "relative" }}>
           <label>Title</label>
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
-            placeholder="e.g., Howl's Moving Castle"
-          />
+          <div style={{ display: "flex", gap: 4 }}>
+            <input
+              value={title}
+              onChange={(e) => { setTitle(e.target.value); setShowSuggestions(false); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAdd();
+                if (e.key === "Escape") setShowSuggestions(false);
+              }}
+              placeholder="e.g., Howl's Moving Castle"
+              style={{ flex: 1 }}
+            />
+            {OMDB_API_KEY && (
+              <button
+                className="icon-btn"
+                onClick={handleSearch}
+                disabled={!title.trim() || searching}
+                aria-label="Look up movie"
+                title="Look up on OMDB"
+                style={{ flexShrink: 0 }}
+              >
+                {searching ? <Loader size={14} className="spin" /> : <Search size={14} />}
+              </button>
+            )}
+          </div>
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="omdb-dropdown">
+              {suggestions.map(r => (
+                <button
+                  key={r.imdbId}
+                  className="omdb-option"
+                  onClick={() => handleSelectSuggestion(r)}
+                >
+                  <span className="omdb-option-title">{r.title}</span>
+                  <span className="omdb-option-year">{r.year}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {showSuggestions && suggestions.length === 0 && !searching && (
+            <div className="omdb-dropdown">
+              <div className="omdb-empty">No results found</div>
+            </div>
+          )}
         </div>
         <div className="col" style={{ width: 120 }}>
           <label>Runtime (mins)</label>
